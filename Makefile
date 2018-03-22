@@ -1,5 +1,11 @@
 VERSION=0.1.0
 
+all: lint build
+
+lint:
+	@go fmt
+	@golint
+
 build:
 	@go build
 
@@ -8,4 +14,4 @@ release:
 	git push origin v${VERSION}
 	goreleaser
 
-.PHONY: build release
+.PHONY: all lint build release
