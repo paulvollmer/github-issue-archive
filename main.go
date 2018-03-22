@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
+	"strconv"
 
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
@@ -24,7 +27,14 @@ var (
 	flagRepo   string
 	flagToken  string
 	flagOutput string
+	flagFormat string
 )
+
+func usage() {
+	fmt.Printf("Usage: github-issue-archive [flags]\n\n")
+	fmt.Printf("Flags:\n")
+	flag.PrintDefaults()
+}
 
 func main() {
 	versionFlag := flag.Bool("v", false, "print version and exit")
@@ -32,6 +42,8 @@ func main() {
 	flag.StringVar(&flagRepo, "repo", "", "github repo name")
 	flag.StringVar(&flagToken, "token", "", "github token")
 	flag.StringVar(&flagOutput, "out", "", "file output to write")
+	flag.StringVar(&flagFormat, "format", "csv", "the file format can be json or csv")
+	flag.Usage = usage
 	flag.Parse()
 	if *versionFlag {
 		fmt.Printf("v%s\n", version)
@@ -50,7 +62,7 @@ func main() {
 		os.Exit(1)
 	}
 	if flagOutput == "" {
-		flagOutput = flagOwner + "_" + flagRepo + ".json"
+		flagOutput = flagOwner + "_" + flagRepo + "." + flagFormat
 		fmt.Printf("Set output to %q\n", flagOutput)
 	}
 
@@ -61,18 +73,21 @@ func main() {
 	getIssues(1, flagOwner, flagRepo)
 	getIssuesComments(1, flagOwner, flagRepo)
 
-	data, err := json.MarshalIndent(archive, "", "  ")
-	if err != nil {
-		fmt.Println(err)
+	switch flagFormat {
+	case "json":
+		writeJSON()
+		break
+	case "csv":
+		writeCSV()
+		break
+	default:
+		fmt.Printf("format %q not supported\n", flagFormat)
 		os.Exit(1)
 	}
-	err = ioutil.WriteFile(flagOutput, data, 0777)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+
 }
 
+// IssueArchive can store all issues and issue comments
 type IssueArchive struct {
 	TotalIssues   int
 	Issues        []*github.Issue
@@ -90,12 +105,10 @@ func getIssues(page int, owner, repo string) {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	// fmt.Println("NEXT", res.NextPage)
 	archive.Issues = append(archive.Issues, issues...)
 	archive.TotalIssues += len(issues)
-
 	if res.NextPage > 0 {
-		page += 1
+		page++
 		getIssues(page, owner, repo)
 	}
 }
@@ -104,10 +117,66 @@ func getIssuesComments(page int, owner, repo string) {
 	optComment := &github.IssueListCommentsOptions{}
 	optComment.Page = 0
 	optComment.PerPage = perPage
-	issueComments, _, err := client.Issues.ListComments(ctx, owner, repo, 0, optComment)
+	issueComments, res, err := client.Issues.ListComments(ctx, owner, repo, 0, optComment)
 	if err != nil {
 		fmt.Println(err)
+		os.Exit(1)
 	}
 	archive.TotalComments = len(issueComments)
 	archive.Comments = append(archive.Comments, issueComments...)
+	if res.NextPage > 0 {
+		page++
+		getIssuesComments(page, owner, repo)
+	}
+}
+
+func writeJSON() {
+	data, err := json.MarshalIndent(archive, "", "  ")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	err = ioutil.WriteFile(flagOutput, data, 0777)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func writeCSV() {
+	records := [][]string{
+		{"Number", "State", "Title", "User", "Comments", "URL", "Created At", "Closed At", "Body"},
+	}
+
+	for i := 0; i < len(archive.Issues); i++ {
+		issue := archive.Issues[i]
+		number := "#" + strconv.Itoa(issue.GetNumber())
+		state := issue.GetState()
+		title := issue.GetTitle()
+		user := issue.User.GetLogin()
+		comments := strconv.Itoa(issue.GetComments())
+		url := issue.GetURL()
+		createdAt := issue.GetCreatedAt().String()
+		closedAt := issue.GetClosedAt().String()
+		body := issue.GetBody()
+		records = append(records, []string{number, state, title, user, comments, url, createdAt, closedAt, body})
+	}
+
+	f, err := os.Create(flagOutput)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer f.Close()
+
+	w := csv.NewWriter(f)
+	for _, record := range records {
+		if err := w.Write(record); err != nil {
+			log.Fatalln("error writing record to csv:", err)
+		}
+	}
+	w.Flush()
+	if err := w.Error(); err != nil {
+		log.Fatal(err)
+	}
 }
