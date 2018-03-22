@@ -17,4 +17,5 @@
 .env
 
 *.zip
+*.json
 github-issue-archive*
