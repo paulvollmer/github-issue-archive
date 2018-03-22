@@ -1,5 +1,11 @@
+VERSION=0.1.0
+
 build:
 	@go build
 
-release: build
-	zip github-issue-archive github-issue-archive.zip
+release:
+	git tag -a v${VERSION} -m "Version ${VERSION}"
+	git push origin v${VERSION}
+	goreleaser
+
+.PHONY: build release

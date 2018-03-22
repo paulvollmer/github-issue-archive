@@ -1,0 +1,9 @@
+project_name: github-issue-archive
+builds:
+  - binary: github-issue-archive
+    goos:
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
