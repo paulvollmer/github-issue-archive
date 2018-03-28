@@ -1,9 +1,4 @@
 language: go
-go:
-  - 1.9
-
-install:
-  - go get ./...
-
-script:
-  - go build -v
+go: 1.9
+install: go get ./...
+script: make
