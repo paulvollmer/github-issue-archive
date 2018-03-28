@@ -12,13 +12,13 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const version = "0.1.0"
+const version = "0.1.1"
 
 var (
 	ctx     = context.Background()
 	client  *github.Client
 	perPage = 100
-	archive IssueArchive
+	archive issueArchive
 
 	flagOwner  string
 	flagRepo   string
@@ -73,7 +73,7 @@ func main() {
 	}
 }
 
-type IssueArchive struct {
+type issueArchive struct {
 	TotalIssues   int
 	Issues        []*github.Issue
 	TotalComments int
@@ -95,7 +95,7 @@ func getIssues(page int, owner, repo string) {
 	archive.TotalIssues += len(issues)
 
 	if res.NextPage > 0 {
-		page += 1
+		page++
 		getIssues(page, owner, repo)
 	}
 }

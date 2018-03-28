@@ -1,6 +1,6 @@
-project_name: github-issue-archive
+project_name: github-issues-archive
 builds:
-  - binary: github-issue-archive
+  - binary: github-issues-archive
     goos:
       - windows
       - darwin

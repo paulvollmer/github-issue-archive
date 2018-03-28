@@ -1,4 +1,4 @@
-# github-issues-archive
+# github-issues-archive [![Build Status](https://travis-ci.org/paulvollmer/github-issues-archive.svg?branch=master)](https://travis-ci.org/paulvollmer/github-issues-archive)
 
 
 ## Installation
