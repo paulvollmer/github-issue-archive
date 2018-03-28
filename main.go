@@ -12,7 +12,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const version = "0.1.0"
+const version = "0.1.1"
 
 var (
 	ctx     = context.Background()
